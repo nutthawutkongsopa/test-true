@@ -1,0 +1,208 @@
+﻿
+@{
+    ViewBag.Title = "View";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>User</h2>
+<div id="app">
+    <div class="row">
+        <div class="col-12">
+            <b-form>
+                <div class="row">
+                    <b-form-group label="First Name" label-for="firstName" class="col-6">
+                        <b-form-input v-model="firstName"></b-form-input>
+                    </b-form-group>
+                    <b-form-group label="Last Name" label-for="lastName" class="col-6">
+                        <b-form-input v-model="lastName"></b-form-input>
+                    </b-form-group>
+                </div>
+                <div class="row">
+                    <div class="col-12">
+                        <button type="button" class="btn btn-info" v-on:click="search">Search</button>
+                    </div>
+                </div>
+            </b-form>
+        </div>
+    </div>
+    <div class="row mt-5">
+        <div class="col-12">
+            <button class="btn btn-primary" v-on:click="add">
+                New User
+            </button>
+            <b-table class="mt-2" id="my-table" ref="table" :items="items" :fields="fields" bordered>
+                <template v-slot:cell(actions)="row">
+                    <div>
+                        <button class="btn btn-sm text-info text-md" v-b-tooltip.hover title="View Detail" v-on:click="edit(row.item)">
+                            Edit
+                        </button>
+                        <button class="btn btn-sm text-danger text-md" v-b-tooltip.hover title="Delete" v-on:click="remove(row.item)">
+                            Delete
+                        </button>
+                    </div>
+                </template>
+            </b-table>
+        </div>
+        <editor ref="editor" v-on:save="save"></editor>
+    </div>
+</div>
+
+<template id="editor">
+    <b-modal ref="modal" v-on:ok="save">
+        <b-form>
+            <b-form-group label-for="username" label="Username">
+                <b-form-input v-model="username"></b-form-input>
+            </b-form-group>
+            <b-form-group label-for="firstName" label="First Name">
+                <b-form-input v-model="firstName"></b-form-input>
+            </b-form-group>
+            <b-form-group label-for="lastName" label="Last Name">
+                <b-form-input v-model="lastName"></b-form-input>
+            </b-form-group>
+            <b-form-group label-for="address" label="Address">
+                <b-form-input v-model="address"></b-form-input>
+            </b-form-group>
+            <b-form-group label-for="provinceId" label="Province">
+                <b-form-select :options="provinceList" v-model="provinceId" value-field="Id" text-field="Name"></b-form-select>
+            </b-form-group>
+            <b-form-group label-for="districtId" label="District">
+                <b-form-select :options="districtList" v-model="districtId" value-field="Id" text-field="Name"></b-form-select>
+            </b-form-group>
+            <b-form-group label-for="subDistrictId" label="Sub District">
+                <b-form-select :options="subDistrictList" v-model="subDistrictId" value-field="Id" text-field="Name"></b-form-select>
+            </b-form-group>
+        </b-form>
+    </b-modal>
+</template>
+
+<script>
+    Vue.component("editor", {
+        template: "#editor",
+        methods: {
+            show(id) {
+                this.id = id;
+                const self = this;
+                if (id) {
+                    axios.post("/User/GetUser/", { id: id })
+                        .then(response => {
+                            const data = response.data
+                            self.username = data.UserName;
+                            self.firstName = data.FirstName;
+                            self.lastName = data.LastName;
+                            self.email = data.Email;
+                            self.address = data.Address;
+                            self.provinceId = data.ProvinceId;
+                            self.districtId = data.DistrictId
+                            self.subDistrictId = data.SubDistrictId;
+                        })
+                }
+                this.$refs.modal.show();
+            },
+            save() {
+                const self = this;
+                const data = {};
+                data.UserName = self.username;
+                data.FirstName = self.firstName;
+                data.LastName = self.lastName;
+                data.Email = self.email;
+                data.Address = self.address;
+                data.ProvinceId = self.provinceId;
+                data.DistrictId = self.districtId;
+                data.SubDistrictId = self.subDistrictId;
+                axios.post("/User/SaveUser", data)
+                    .then(response => {
+                        self.$emit("save")
+                    })
+
+            }
+        },
+        data: function () {
+            return {
+                id: null,
+                username: null,
+                firstName: null,
+                lastName: null,
+                email: null,
+                address: null,
+                provinceId: null,
+                districtId: null,
+                subDistrictId: null,
+                provinceList: [],
+                districtList: [],
+                subDistrictList: []
+            }
+        },
+        watch: {
+            provinceId(newVal) {
+                const self = this;
+                axios.post("/User/GetDistrict", { provinceId: newVal }).then(response => {
+                    self.districtList = response.data;
+                });
+            },
+            districtId(newVal) {
+                const self = this;
+                axios.post("/User/GetSubDistrict", { districtId: newVal }).then(response => {
+                    self.subDistrictList = response.data;
+                });
+            }
+
+        },
+        created() {
+            const self = this;
+            axios.get("/User/GetAllProvince")
+                .then(response => {
+                    self.provinceList = response.data;
+                })
+        }
+    })
+    new Vue({
+        el: "#app",
+        data: {
+            firstName: null,
+            lastName: null,
+            items: [],
+            fields: [
+                { key: "Id", label: "Id", sortable: true },
+                { key: "Username", label: "Username", sortable: true },
+                { key: "FirstName", label: "First Name", sortable: true },
+                { key: "LastName", label: "Last Name", sortable: true },
+                { key: "CreatedBy", label: "Create By", sortable: true },
+                { key: "CreatedDateDisplay", label: "Create Date", sortable: true },
+                { key: "UpdatedBy", label: "Last Update By", sortable: true },
+                { key: "UpdatedDateDisplay", label: "Last Update", sortable: true },
+                { key: "actions", label: "Actions", sortable: false }
+            ]
+        },
+        methods: {
+            search() {
+                const self = this;
+                axios.post("/User/SearchUser", { FirstName: this.firstName, LastName: this.lastName }).then(response => {
+                    self.items = response.data;
+                });
+            },
+            add() {
+                this.$refs.editor.show();
+            },
+            edit(item) {
+                this.$refs.editor.show(item.Id);
+            },
+            remove(item) {
+                if (confirm("Are you sure?")) {
+                    const self = this;
+                    axios.post("/User/RemoveUser/", { id: item.Id })
+                        .then(response => {
+                            self.search();
+                        });
+                }
+               
+            },
+            save() {
+                this.search();
+            }
+        },
+        created() {
+            this.search()
+        }
+    })
+</script>
+
